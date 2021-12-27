@@ -137,9 +137,9 @@ def just_surprise(data):
 
     return loss
 
-def safe_model():
-  model.save(MODEL_PATH)
-  print("Saving model to {}...".format(MODEL_PATH))
+def save_model():
+    model.save(MODEL_PATH)
+    print("Saving model to {}...".format(MODEL_PATH))
 
 routes = {
     "": encode_and_train,
