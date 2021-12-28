@@ -1,7 +1,6 @@
 # Aegis Autoencoder Node
-Expects the loaded model to have an encoder at layers[-2] and a decoder at layers[-1]
+Expects the loaded model to have an encoder and decoder at layers[-2] and layers[-1], respectively
 
 ## TODO
-* Support more conv dims
-* Add model builder
 * test
+* document req/res, env vars, setup (incl example of [model building](https://github.com/tehZevo/keras-model-builder))
