@@ -20,8 +20,7 @@ LR = float(os.getenv("LR", 1e-3))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
 BUFFER_SIZE = int(os.getenv("BUFFER_SIZE", 10000))
 MODEL_PATH = os.getenv("MODEL_PATH", "models/model.keras")
-AUTOSAVE = os.getenv("AUTOSAVE", 1000) #save every N calls to train
-AUTOSAVE = None if AUTOSAVE is None else int(AUTOSAVE)
+AUTOSAVE = int(os.getenv("AUTOSAVE", 1000)) #save every N calls to train
 
 #TODO: support conv AE
 #TODO: make and use a model builder library
@@ -57,10 +56,10 @@ model.summary()
 memory = []
 
 def add_to_buffer(x):
-    while len(memory) >= BUFFER_SIZE - 1:
-        memory.pop(np.random.randint(len(memory)))
-
     memory.append(x)
+
+    while len(memory) > BUFFER_SIZE:
+        memory.pop(0)
 
 #adds to the buffer if sample loss is greater than batch loss
 def add_to_buffer_smart(x, batch_loss):
@@ -97,37 +96,31 @@ def train():
     batch = get_batch(BATCH_SIZE)
     loss = model.train_on_batch(batch, batch)
 
-    if AUTOSAVE is not None:
+    if AUTOSAVE >= 1:
         train_steps += 1
         if train_steps >= AUTOSAVE:
             train_steps = 0
             save_model()
-
-    #hopefully avoid memory leak in keras
-    gc.collect()
 
     return loss
 
 #encodes the input, adds input to buffer, and trains for 1 batch
 def encode_and_train(data):
     x = json_to_nd(data)
+    #encode
+    encoded = encoder.predict_on_batch(np.expand_dims(x, 0))[0]
+    encoded = nd_to_json(encoded)
+    #add to buffer
+    add_to_buffer(x)
     #train
     train_loss = train()
-    #add to buffer
-    #add_to_buffer_smart(x, train_loss)
-    add_to_buffer(x)
-    #encode
-    x = encoder.predict(np.expand_dims(x, 0))[0]
-    x = nd_to_json(x)
 
-    return x
+    return encoded
 
 def just_encode(data):
     x = json_to_nd(data)
-    #TODO: add to buffer?
-    # add_to_buffer(x)
     #encode
-    x = encoder.predict(np.expand_dims(x, 0))[0]
+    x = encoder.predict_on_batch(np.expand_dims(x, 0))[0]
     x = nd_to_json(x)
 
     return x
@@ -135,7 +128,7 @@ def just_encode(data):
 def just_decode(data):
     x = json_to_nd(data)
     #decode
-    x = decoder.predict(np.expand_dims(x, 0))[0]
+    x = decoder.predict_on_batch(np.expand_dims(x, 0))[0]
     x = nd_to_json(x)
 
     return x
@@ -143,7 +136,7 @@ def just_decode(data):
 def reconstruct(data):
     x = json_to_nd(data)
     #encode-decode
-    x = model.predict(np.expand_dims(x, 0))[0]
+    x = model.predict_on_batch(np.expand_dims(x, 0))[0]
     x = nd_to_json(x)
 
     return x
@@ -151,13 +144,12 @@ def reconstruct(data):
 #calculates and returns loss, adds to buffer, then trains for 1 batch
 def surprise_and_train(data):
     x = json_to_nd(data)
-    #train
-    train_loss = train()
     #calc loss
     loss = calc_test_loss(np.expand_dims(x, 0))
     #add to buffer
-    #add_to_buffer_smart(x, train_loss)
     add_to_buffer(x)
+    #train
+    train_loss = train()
 
     return loss
 

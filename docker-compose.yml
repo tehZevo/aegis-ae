@@ -5,3 +5,9 @@ services:
     build: .
     ports:
       - "8080:80"
+    volumes:
+      - "./models:/app/models"
+    environment:
+      INPUT_SIZE: 128
+      MODEL_PATH: "models/model.keras"
+      AUTOSAVE: 50 #you'd likely want this to be higher
