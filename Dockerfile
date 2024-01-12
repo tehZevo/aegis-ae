@@ -8,7 +8,7 @@ run apt update -y
 RUN apt install git -y
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --ignore-installed -r requirements.txt
 
 COPY . .
 
