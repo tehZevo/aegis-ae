@@ -7,19 +7,51 @@ import numpy as np
 from protopost import ProtoPost
 from nd_to_json import nd_to_json, json_to_nd
 
+from ae import create_ae
+
 PORT = os.getenv("PORT", 80)
-MODEL_PATH = os.getenv("MODEL_PATH", "models/model.h5")
+INPUT_SIZE = int(os.getenv("INPUT_SIZE", 128))
+LATENT_SIZE = int(os.getenv("LATENT_SIZE", 32))
+ENCODER_HIDDEN = os.getenv("ENCODER_HIDDEN", "64").split()
+DECODER_HIDDEN = os.getenv("DECODER_HIDDEN", "64").split()
+ACTIVATION = os.getenv("ACTIVATION", "swish")
+LATENT_ACTIVATION = os.getenv("LATENT_ACTIVATION", "tanh")
+LR = float(os.getenv("LR", 1e-3))
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", 32))
 BUFFER_SIZE = int(os.getenv("BUFFER_SIZE", 10000))
-AUTOSAVE = os.getenv("AUTOSAVE", None) #save every N calls to train
+MODEL_PATH = os.getenv("MODEL_PATH", "models/model.keras")
+AUTOSAVE = os.getenv("AUTOSAVE", 1000) #save every N calls to train
 AUTOSAVE = None if AUTOSAVE is None else int(AUTOSAVE)
 
-model = load_model(MODEL_PATH)
-encoder = model.layers[-2]
-decoder = model.layers[-1]
+#TODO: support conv AE
+#TODO: make and use a model builder library
 
+#try to load model, else build and save a new one
+try:
+  model = load_model(MODEL_PATH)
+  print(f"Loaded model from {MODEL_PATH}")
+  encoder = model.layers[-2]
+  decoder = model.layers[-1]
+except IOError as e:
+  print(f"Model not found at {MODEL_PATH}, creating...")
+  model, encoder, decoder = create_ae(
+    input_size=INPUT_SIZE,
+    latent_size=LATENT_SIZE,
+    encoder_hidden=ENCODER_HIDDEN,
+    decoder_hidden=DECODER_HIDDEN,
+    lr=LR,
+    activation=ACTIVATION,
+    latent_activation=LATENT_ACTIVATION
+  )
+  model.save(MODEL_PATH)
+
+print("Encoder summary:")
 encoder.summary()
+
+print("Decoder summary:")
 decoder.summary()
+
+print("Full model summary:")
 model.summary()
 
 memory = []
@@ -139,7 +171,7 @@ def just_surprise(data):
 
 def save_model():
     model.save(MODEL_PATH)
-    print("Saving model to {}...".format(MODEL_PATH))
+    print(f"Saving model to {MODEL_PATH}...")
 
 routes = {
     "": encode_and_train,
